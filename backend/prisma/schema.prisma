@@ -1,0 +1,165 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id         Int        @id @default(autoincrement())
+  first_name String
+  last_name  String
+  email      String     @unique
+  password   String
+  role       String     @default("Viewer") // "Super Admin", "Admin", "Inventory Manager", "Order Manager", "Supplier Manager", "Viewer"
+  is_active  Boolean    @default(true)
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
+  audit_logs AuditLog[]
+
+  @@map("users")
+}
+
+model Book {
+  id                 Int         @id @default(autoincrement())
+  isbn               String      @unique
+  title              String
+  author             String
+  description        String?
+  category_id        Int?
+  category           Category?   @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  vendor_id          Int?
+  vendor             Supplier?   @relation(fields: [vendor_id], references: [id], onDelete: SetNull)
+  price              Float
+  shopify_price      Float?
+  quantity           Int         @default(0)
+  weight             Float?
+  publisher          String?
+  language           String?
+  sku                String?     @unique
+  barcode            String?
+  tags               String?     // Comma separated tags
+  status             String      @default("Draft") // "Active", "Draft", "Archived"
+  dimensions         String?
+  image_url          String?
+  shopify_product_id String?
+  shopify_variant_id String?
+  sync_status        String      @default("Pending") // "Pending", "Synced", "Failed"
+  created_at         DateTime    @default(now())
+  updated_at         DateTime    @updatedAt
+  order_items        OrderItem[]
+
+  @@map("books")
+}
+
+model Order {
+  id              Int         @id @default(autoincrement())
+  order_number    String      @unique
+  customer_name   String
+  customer_email  String?
+  amount          Float
+  status          String      @default("Pending") // "Pending", "Paid", "Fulfilled", "Partially shipped", "Shipped", "Delivered", "Cancelled", "Returned"
+  shopify_order_id String?
+  delivery_method String?     @default("Standard")
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+  items           OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id       Int   @id @default(autoincrement())
+  order_id Int
+  order    Order @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  book_id  Int
+  book     Book  @relation(fields: [book_id], references: [id], onDelete: Restrict)
+  quantity Int
+  price    Float
+
+  @@map("order_items")
+}
+
+model Supplier {
+  id              Int             @id @default(autoincrement())
+  name            String
+  email           String
+  phone           String?
+  address         String?
+  tax_id          String?
+  website         String?
+  notes           String?
+  books           Book[]
+  purchase_orders PurchaseOrder[]
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+
+  @@map("suppliers")
+}
+
+model PurchaseOrder {
+  id           Int                 @id @default(autoincrement())
+  po_number    String              @unique
+  supplier_id  Int
+  supplier     Supplier            @relation(fields: [supplier_id], references: [id], onDelete: Restrict)
+  status       String              @default("Draft") // "Draft", "Sent", "Approved", "Rejected", "Completed"
+  total_amount Float               @default(0.0)
+  created_at   DateTime            @default(now())
+  updated_at   DateTime            @updatedAt
+  items        PurchaseOrderItem[]
+
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id         Int           @id @default(autoincrement())
+  po_id      Int
+  po         PurchaseOrder @relation(fields: [po_id], references: [id], onDelete: Cascade)
+  isbn       String
+  title      String
+  quantity   Int
+  unit_price Float
+
+  @@map("purchase_order_items")
+}
+
+model Category {
+  id                    Int        @id @default(autoincrement())
+  name                  String     @unique
+  parent_id             Int?
+  parent                Category?  @relation("CategoryToCategory", fields: [parent_id], references: [id], onDelete: SetNull)
+  subcategories         Category[] @relation("CategoryToCategory")
+  image_url             String?
+  seo_title             String?
+  seo_description       String?
+  shopify_collection_id String?
+  books                 Book[]
+  created_at            DateTime   @default(now())
+  updated_at            DateTime   @updatedAt
+
+  @@map("categories")
+}
+
+model SyncLog {
+  id         Int      @id @default(autoincrement())
+  type       String   // "BookSync", "OrderSync", "StockSync"
+  status     String   // "Success", "Failed"
+  message    String
+  created_at DateTime @default(now())
+
+  @@map("sync_logs")
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  user_id    Int?
+  user       User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  action     String   // "USER_LOGIN", "BOOK_CREATE", "BOOK_UPDATE", "ORDER_SYNC", etc.
+  details    String
+  ip_address String?
+  created_at DateTime @default(now())
+
+  @@map("audit_logs")
+}
