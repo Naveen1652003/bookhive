@@ -1,11 +1,17 @@
 import { Queue } from 'bullmq';
 import { redisConnection } from '../config/redis';
-import { logger } from '../utils/logger';
+import { logger, logErrorThrottled } from '../utils/logger';
 import { ShopifyService } from '../services/shopify.service';
 
 export const shopifySyncQueue = new Queue('shopify-sync', { connection: redisConnection });
 export const emailQueue = new Queue('email-queue', { connection: redisConnection });
 export const inventoryQueue = new Queue('inventory-queue', { connection: redisConnection });
+
+// Handle connection/operational errors silently to provide a clean offline mode
+shopifySyncQueue.on('error', () => {});
+emailQueue.on('error', () => {});
+inventoryQueue.on('error', () => {});
+
 
 export class QueueService {
   static async addShopifySyncJob(bookId: number, action: 'create' | 'update' | 'delete') {

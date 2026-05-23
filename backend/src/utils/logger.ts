@@ -36,3 +36,13 @@ export const logger = winston.createLogger({
   format,
   transports,
 });
+
+const lastLogTimes: Record<string, number> = {};
+
+export function logErrorThrottled(key: string, message: string, throttleMs = 60000) {
+  const now = Date.now();
+  if (!lastLogTimes[key] || now - lastLogTimes[key] > throttleMs) {
+    logger.error(message);
+    lastLogTimes[key] = now;
+  }
+}

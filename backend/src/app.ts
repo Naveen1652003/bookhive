@@ -9,6 +9,15 @@ import { logger } from './utils/logger';
 import apiRouter from './routes/api';
 import { startWorkers } from './jobs/workers';
 
+// Prevent process crashes due to uncaught errors or unhandled promise rejections
+process.on('uncaughtException', (err) => {
+  logger.error(`Uncaught Exception: ${err.message || err}`, err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+});
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 

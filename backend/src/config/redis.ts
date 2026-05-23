@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import { logger } from '../utils/logger';
+import { logger, logErrorThrottled } from '../utils/logger';
 
 const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 
@@ -17,6 +17,6 @@ redisConnection.on('connect', () => {
   logger.info('Connected to Redis server.');
 });
 
-redisConnection.on('error', (err) => {
-  logger.error(`Redis client error: ${err.message}`);
+redisConnection.on('error', () => {
+  // Silent in offline mode
 });

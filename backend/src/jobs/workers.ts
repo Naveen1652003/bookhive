@@ -1,13 +1,12 @@
 import { Worker } from 'bullmq';
 import { redisConnection } from '../config/redis';
 import { ShopifyService } from '../services/shopify.service';
-import { logger } from '../utils/logger';
+import { logger, logErrorThrottled } from '../utils/logger';
 
 export function startWorkers() {
-  // Check if redis connection is healthy before spawning workers
+  // Log status but initialize workers anyway so they connect automatically when Redis comes online
   if (redisConnection.status !== 'ready' && redisConnection.status !== 'connecting') {
-    logger.warn('Redis connection is offline. Skipping BullMQ worker initialization.');
-    return;
+    logger.warn('Redis connection is offline. Workers will retry connecting automatically in the background.');
   }
 
   // 1. Shopify Product & Quantity Sync Worker
@@ -53,17 +52,13 @@ export function startWorkers() {
     logger.error(`Shopify Sync Job ${job?.id} Failed: ${err.message}`);
   });
 
-  shopifyWorker.on('error', (err) => {
-    logger.error(`Shopify Sync Worker Connection Error: ${err.message}`);
-  });
+  shopifyWorker.on('error', () => {});
 
   emailWorker.on('completed', (job) => {
     logger.info(`Email Send Job ${job.id} Completed.`);
   });
 
-  emailWorker.on('error', (err) => {
-    logger.error(`Email Worker Connection Error: ${err.message}`);
-  });
+  emailWorker.on('error', () => {});
 
   logger.info('Initialized BullMQ background worker listeners.');
 }
