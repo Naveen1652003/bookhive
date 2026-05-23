@@ -70,13 +70,17 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-// Start Background Queue Workers
-startWorkers();
+// Start Background Queue Workers only if not on Vercel
+if (process.env.VERCEL !== '1') {
+  startWorkers();
+}
 
-// Listen Server
-app.listen(PORT, () => {
-  logger.info(`BookHive Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
-});
+// Listen Server only if not on Vercel
+if (process.env.VERCEL !== '1') {
+  app.listen(PORT, () => {
+    logger.info(`BookHive Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+  });
+}
 
 export default app;
 // Trigger reload 2
